@@ -33,7 +33,8 @@ def collect_events(helper, ew):
     #helper.set_log_level(log_level)
 
     # The following examples send rest requests to some endpoint.
-    response = helper.send_http_request("https://" + opt_airlock_server_fqdn +":"+opt_airlock_rest_api_port+"/v1/agent/find", method="POST", parameters=None, headers={"X-ApiKey":opt_airlock_rest_api_key}, cookies=None, verify=True, cert=None,timeout=None, use_proxy=True)
+    url = "https://" + opt_airlock_server_fqdn +":"+opt_airlock_rest_api_port+"/v1/agent/find"
+    response = helper.send_http_request(url, method="POST", parameters=None, headers={"X-ApiKey":opt_airlock_rest_api_key}, cookies=None, verify=True, cert=None,timeout=None, use_proxy=True)
 
     r_json = response.json()
 
@@ -43,5 +44,5 @@ def collect_events(helper, ew):
 
     for i in r_json['response']['agents']:
         agents=i
-        event = helper.new_event(source="Airlock_Agent", index=helper.get_output_index(), sourcetype="_json", data=json.dumps(agents),unbroken=True,time=time.time())
+        event = helper.new_event(source=url, index=helper.get_output_index(), sourcetype="airlock:agent", data=json.dumps(agents),unbroken=True,time=time.time())
         ew.write_event(event)
