@@ -49,6 +49,8 @@ def collect_events(helper, ew):
     #global_userdefined_global_var = helper.get_global_setting("userdefined_global_var")
     # get checkpoint
     checkpoint = helper.get_check_point("checkpoint")
+
+    url = "https://"+opt_airlock_server_fqdn +":"+opt_airlock_rest_api_port+"/v1/logging/exechistories"
     try:
         helper.log_debug("Checkpoint value in Splunk is:" + checkpoint)
     except:
@@ -57,7 +59,7 @@ def collect_events(helper, ew):
     if checkpoint is None:
         helper.log_debug("No historical checkpoint found, obtaining restart checkpoint from Airlock") 
 
-        response = helper.send_http_request("https://"+opt_airlock_server_fqdn +":"+opt_airlock_rest_api_port+"/v1/logging/exechistories", method="POST", parameters=None, payload={"type":opt_execution_types_to_collect},headers={"X-ApiKey":opt_airlock_rest_api_key}, cookies=None, verify=True, cert=None,timeout=None, use_proxy=True)
+        response = helper.send_http_request(url, method="POST", parameters=None, payload={"type":opt_execution_types_to_collect},headers={"X-ApiKey":opt_airlock_rest_api_key}, cookies=None, verify=True, cert=None,timeout=None, use_proxy=True)
         response.raise_for_status()
         r_json = response.json()        
         if not 'response' in r_json or len(r_json['response']['exechistories']) == 0: #If there are no results we don't need to write anything or do much
@@ -69,7 +71,7 @@ def collect_events(helper, ew):
             helper.log_debug(r_json)
             checkpoint = r_json['response']['exechistories'][-1]['checkpoint']
             #Write the events to the specified index
-            event = helper.new_event(source="Airlock_REST_exechistories", sourcetype="_json", index="main", data=json.dumps(r_json['response']['exechistories']))
+            event = helper.new_event(source=url, sourcetype="airlock:exechistories", index=helper.get_output_index(), data=json.dumps(r_json['response']['exechistories']))
             #replace hardcoded index with index=helper.get_output_index()
             # save checkpoint
             helper.log_debug("Saving checkpoint to Splunk:" + checkpoint)
@@ -78,7 +80,7 @@ def collect_events(helper, ew):
     else:
         helper.log_debug("Historical checkpoint found:" + checkpoint)
         try:
-            response = helper.send_http_request("https://"+opt_airlock_server_fqdn +":"+opt_airlock_rest_api_port+"/v1/logging/exechistories", method="POST", parameters=None, payload={"checkpoint":checkpoint,"type":opt_execution_types_to_collect},headers={"X-ApiKey":opt_airlock_rest_api_key}, cookies=None, verify=True, cert=None,timeout=None, use_proxy=True)
+            response = helper.send_http_request(url, method="POST", parameters=None, payload={"checkpoint":checkpoint,"type":opt_execution_types_to_collect},headers={"X-ApiKey":opt_airlock_rest_api_key}, cookies=None, verify=True, cert=None,timeout=None, use_proxy=True)
             response.raise_for_status()
             r_json = response.json()
         except:
@@ -92,7 +94,7 @@ def collect_events(helper, ew):
             helper.log_debug(r_json)
             #Write the events to the specified index
             for i in r_json['response']['exechistories']:
-                event = helper.new_event(source="Airlock_REST_exechistories", sourcetype="_json", index=helper.get_output_index(), data=json.dumps(i))
+                event = helper.new_event(source=url, sourcetype="airlock:exechistories", index=helper.get_output_index(), data=json.dumps(i))
                 ew.write_event(event)
             index=helper.get_output_index()
             helper.log_debug("index is" + index)
